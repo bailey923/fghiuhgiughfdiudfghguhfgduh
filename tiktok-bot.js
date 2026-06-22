@@ -1,4 +1,4 @@
-import { TikTokLiveConnection, WebcastEvent } from "tiktok-live-connector";
+import { TikTokLiveConnection, ControlEvent, WebcastEvent } from "tiktok-live-connector";
 
 const TIKTOK_USERNAME = process.env.TIKTOK_USERNAME;
 const BRIDGE_URL = process.env.BRIDGE_URL;
@@ -9,9 +9,11 @@ if (!TIKTOK_USERNAME || !BRIDGE_URL || !BRIDGE_SECRET) {
   process.exit(1);
 }
 
-const cleanBaseUrl = BRIDGE_URL.replace(/\/$/, "");
-
-const connection = new TikTokLiveConnection(TIKTOK_USERNAME);
+const connection = new TikTokLiveConnection(TIKTOK_USERNAME, {
+  processInitialData: true,
+  enableExtendedGiftInfo: false,
+  enableWebsocketUpgrade: true,
+});
 
 const recentByUser = new Map();
 const recentGlobal = new Map();
@@ -34,7 +36,7 @@ function cleanUsername(input) {
 
 async function enqueue(username, sourceCommenter, rawComment) {
   try {
-    const r = await fetch(`${cleanBaseUrl}/enqueue`, {
+    const r = await fetch(`${BRIDGE_URL.replace(/\/$/, "")}/enqueue`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -88,15 +90,23 @@ async function connectToTikTok() {
   }
 }
 
-connection.on(WebcastEvent.CONNECTED, (state) => {
+connection.on(ControlEvent.CONNECTED, (state) => {
   isConnected = true;
   console.log(`Connected to ${TIKTOK_USERNAME} LIVE`);
   console.log(state);
 });
 
-connection.on(WebcastEvent.DISCONNECTED, () => {
+connection.on(ControlEvent.DISCONNECTED, (data) => {
   isConnected = false;
   console.log("Disconnected. Reconnecting in 5s...");
+  if (data?.code || data?.reason) {
+    console.log(data);
+  }
+  scheduleReconnect();
+});
+
+connection.on(ControlEvent.ERROR, ({ info, exception }) => {
+  console.error("TikTok connection error:", info || exception || "unknown error");
   scheduleReconnect();
 });
 
@@ -119,10 +129,6 @@ connection.on(WebcastEvent.CHAT, async (data) => {
 
   console.log(`Queueing Roblox avatar: ${username} (from ${commenter})`);
   await enqueue(username, commenter, raw);
-});
-
-connection.on(WebcastEvent.ERROR, (err) => {
-  console.error("TikTok connection error:", err);
 });
 
 process.on("SIGINT", async () => {
