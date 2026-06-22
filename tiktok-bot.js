@@ -1,7 +1,9 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
-const { WebcastPushConnection } = require("tiktok-live-connector");
+const tiktok = require("tiktok-live-connector");
+const WebcastPushConnection =
+  tiktok.WebcastPushConnection || tiktok.default || tiktok;
 
 const TIKTOK_USERNAME = process.env.TIKTOK_USERNAME;
 const BRIDGE_URL = process.env.BRIDGE_URL; 
