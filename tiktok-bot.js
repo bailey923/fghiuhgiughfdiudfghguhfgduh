@@ -1,4 +1,6 @@
-import { WebcastPushConnection } from "tiktok-live-connector";
+import pkg from "tiktok-live-connector";
+
+const { WebcastPushConnection } = pkg;
 
 const TIKTOK_USERNAME = process.env.TIKTOK_USERNAME;
 const BRIDGE_URL = process.env.BRIDGE_URL; 
